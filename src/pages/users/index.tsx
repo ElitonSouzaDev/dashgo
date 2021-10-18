@@ -14,6 +14,7 @@ import {
   Text,
   Spinner,
   useBreakpointValue,
+  Link as ChakraLink
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useState } from "react";
@@ -22,7 +23,9 @@ import { RiAddLine, RiEditLine } from "react-icons/ri";
 import Header from "../../components/Header";
 import { Pagination } from "../../components/Pagination";
 import { Sidebar } from "../../components/SideBar";
-import { useUsers } from "../../services/hooks/useUsers";
+import { api } from "../../services/api";
+import { getUsers, useUsers } from "../../services/hooks/useUsers";
+import { queryClient } from "../../services/queryClient";
 
 export default function UserList() {
   const [page, setPage] = useState(1);
@@ -31,6 +34,15 @@ export default function UserList() {
     base: false,
     lg: true,
   });
+
+  async function handlePrefetchUser(userId: number){
+    await queryClient.prefetchQuery(['user', userId], async () => {
+      const response = await api.get('user/'+userId);
+      return response.data;
+    }, {
+      staleTime: 1000 * 60 * 10 // 10 min 
+    })
+  }
 
   return (
     <Box>
@@ -41,7 +53,9 @@ export default function UserList() {
           <Flex mb="8" justify="space-between" align="center">
             <Heading size="lg" fontWeight="normal">
               Usuários
-              {isFetching && !isLoading && <Spinner size='sm' color='gray-500' ml='4'/>}
+              {isFetching && !isLoading && (
+                <Spinner size="sm" color="gray-500" ml="4" />
+              )}
             </Heading>
             <Link href="/users/create" passHref>
               <Button
@@ -78,41 +92,43 @@ export default function UserList() {
                 </Thead>
                 <Tbody>
                   {data.users.map((user) => {
-                      return (
-                        <Tr key={user.id}>
-                          <Td px={["4", "4", "6"]}>
-                            <Checkbox colorScheme="pink" />
-                          </Td>
-                          <Td>
-                            <Box>
+                    return (
+                      <Tr key={user.id}>
+                        <Td px={["4", "4", "6"]}>
+                          <Checkbox colorScheme="pink" />
+                        </Td>
+                        <Td>
+                          <Box>
+                            <ChakraLink 
+                              onMouseEnter={() => handlePrefetchUser(+user.id)}
+                              color='purple.400'>
                               <Text fontWeight="bold">{user.name}</Text>
-                              <Text fontSize="sm" color="gray.300">
-                                {user.email}
-                              </Text>
-                            </Box>
-                          </Td>
-                          {isWideVersion && (
-                            <Td px={["4", "4", "6"]}>
-                              {user.createdAt}
-                            </Td>
-                          )}
-                          <Td px={["4", "4", "6"]}>
-                            <Button
-                              as="a"
-                              size="sm"
-                              fontSize="sm"
-                              colorScheme="purple"
-                              leftIcon={<Icon fontSize="16" as={RiEditLine} />}
-                            >
-                              {isWideVersion && "Editar"}
-                            </Button>
-                          </Td>
-                        </Tr>
-                      );
-                    })}
+                            </ChakraLink>
+                            <Text fontSize="sm" color="gray.300">
+                              {user.email}
+                            </Text>
+                          </Box>
+                        </Td>
+                        {isWideVersion && (
+                          <Td px={["4", "4", "6"]}>{user.createdAt}</Td>
+                        )}
+                        <Td px={["4", "4", "6"]}>
+                          <Button
+                            as="a"
+                            size="sm"
+                            fontSize="sm"
+                            colorScheme="purple"
+                            leftIcon={<Icon fontSize="16" as={RiEditLine} />}
+                          >
+                            {isWideVersion && "Editar"}
+                          </Button>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
                 </Tbody>
               </Table>
-              <Pagination 
+              <Pagination
                 registerPerPage={10}
                 totalCountOfRegisters={data.totalCount}
                 currentPage={page}
